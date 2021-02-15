@@ -11,7 +11,8 @@ pragma solidity >=0.4.22 <0.8.4;
 //
 // Enjoy.
 //
-// (c) by the Crypto Island Foundation. The MIT Licence.
+// (c) by the Crypto Island Foundation. 
+// "SPDX-License-Identifier: MIT"
 // ----------------------------------------------------------------------------
 
 
@@ -42,21 +43,14 @@ contract SafeMath {
 // ERC Token Standard #20 Interface
 // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20-token-standard.md
 // ----------------------------------------------------------------------------
-contract ERC20Interface {
-    function totalSupply() public view returns (uint);
-    function balanceOf(address tokenOwner) public view returns (uint balance);
-    function allowance(address tokenOwner, address spender) public view returns (uint remaining);
-    function transfer(address to, uint tokens) public returns (bool success) {
-        require(to != address(0x0));
-        require(to != address(this) );
-    }
-    function approve(address spender, uint tokens) public returns (bool success);
-    function transferFrom(address from, address to, uint tokens) public returns (bool success) {
-        require(to != address(0x0));
-        require(to != address(this) );
-    }
-    event Transfer(address indexed from, address indexed to, uint tokens);
-    event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
+interface ERC20Interface {
+    function totalSupply() external view returns (uint);
+    function balanceOf(address tokenOwner) external view returns (uint balance);
+    function allowance(address tokenOwner, address spender) external returns (uint remaining);
+    function transfer(address to, uint tokens) external returns (bool success);
+    function approve(address spender, uint tokens) external returns (bool success);
+    function transferFrom(address from, address to, uint tokens) external returns (bool success);
+    
 }
 
 
@@ -65,8 +59,8 @@ contract ERC20Interface {
 //
 // Borrowed from MiniMeToken
 // ----------------------------------------------------------------------------
-contract ApproveAndCallFallBack {
-    function receiveApproval(address from, uint256 tokens, address token, bytes memory data) public;
+interface ApproveAndCallFallBack {
+    function receiveApproval(address from, uint256 tokens, address token, bytes memory data) external;
 }
 
 
@@ -78,9 +72,16 @@ contract Owned {
     address public newOwner;
 
     event OwnershipTransferred(address indexed _from, address indexed _to);
-
+    
+    
+    /* This shadows existing declaration. so you really need this? rather than this, put it in Constructor
     function eIsland() public {
       owner = msg.sender;
+    }
+    */
+    constructor()  {
+        owner = msg.sender;
+        emit OwnershipTransferred(address(0), owner);
     }
 
     modifier onlyOwner {
@@ -104,7 +105,7 @@ contract Owned {
 // ERC20 Token, with the addition of symbol, name and decimals and assisted
 // token transfers
 // ----------------------------------------------------------------------------
-contract eIsland is ERC20Interface, Owned, SafeMath {
+contract eIsland is /*ERC20Interface,*/ Owned, SafeMath {
     string public symbol;
     string public  name;
     uint8 public decimals;
@@ -115,17 +116,21 @@ contract eIsland is ERC20Interface, Owned, SafeMath {
 
     mapping(address => uint) balances;
     mapping(address => mapping(address => uint)) allowed;
+    
+    
+    event Transfer(address indexed from, address indexed to, uint tokens);
+    event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 
 
     // ------------------------------------------------------------------------
     // Constructor
     // ------------------------------------------------------------------------
-    constructor() public {
+    constructor()  {
         symbol = "eIsland";
         name = "Crypto Island Token";
         decimals = 2;
-        bonusEnds = now + 8 weeks;
-        endDate = now + 12 weeks;
+        bonusEnds = block.timestamp + 8 weeks;
+        endDate = block.timestamp + 12 weeks;
 
     }
 
@@ -216,18 +221,18 @@ contract eIsland is ERC20Interface, Owned, SafeMath {
     // ------------------------------------------------------------------------
     // 1500 FWD Tokens per 1 ETH
     // ------------------------------------------------------------------------
-    function() external payable {
-        require(now >= startDate && now <= endDate);
+    receive() external payable {
+        require(block.timestamp >= startDate && block.timestamp <= endDate);
         uint tokens;
-        if (now <= bonusEnds) {
-            tokens = msg.value * 2000;
+        if (block.timestamp <= bonusEnds) {
+            tokens = msg.value * 200000 / 1e18;
         } else {
-            tokens = msg.value * 1500;
+            tokens = msg.value * 150000 / 1e18;
         }
         balances[msg.sender] = safeAdd(balances[msg.sender], tokens);
         _totalSupply = safeAdd(_totalSupply, tokens);
         emit Transfer(address(0), msg.sender, tokens);
-        address(uint160(owner)).transfer(msg.value);
+        payable(owner).transfer(msg.value);
     }
 
 
